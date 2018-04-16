@@ -12,7 +12,7 @@ app.use(bodyParser.json());
 
 // Configuramos cabeceras http
 
-// Rutas base
+// Ruta base
 app.use('/api',user_routes)
 
 module.exports = app

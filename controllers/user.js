@@ -2,6 +2,7 @@
 
 const User = require('../models/user')
 const jwt = require('../services/jwt')
+const cipher = require('../services/cipher')
 //trabajando con el sistema de archivos
 const fs = require('fs')
 const path = require('path')
@@ -11,17 +12,28 @@ function pruebas(req,res){
 }
 
 function saveUser(req,res){
-    const user = new User({
+    let user = new User({
         name: req.body.name,
         email: req.body.email,
         password: req.body.password,
         role: 'ROLE_USER',
         image: 'null'
-    })
-    user.save((err)=>{
-       if(err) return res.status(500).send({ message: `Error al crear el usuario` })
-       return res.status(200).send({ message: user })
-    })
+     })
+     if(!user.password){
+         return res.status(404).send({message:'El password es incorrecto'})
+     }
+     cipher.encodePassword(user.password)
+     .then(hash=>{
+         user.password = hash
+         user.save((err)=>{
+             if(err) return res.status(500).send({message:'Usuario ya existente'})
+             return res.status(200).send({ message: user })
+         })
+     })
+     .catch(erro => {
+         res.status(erro.status).send({message:erro.message})
+     })
+
 }
 
 function loginUser(req,res){

@@ -1,15 +1,16 @@
 'use strict'
-let mongoose = require('mongoose')
-let app = require('./app')
-let port = process.env.PORT || 3000
+const mongoose = require('mongoose')
+const app = require('./app')
+const config = require('./config')
 
-mongoose.connect('mongodb://localhost:27017/fakebook',(err,res)=>{
+mongoose.Promise = global.Promise;
+mongoose.connect(config.db,(err,res)=>{
     if(err){
       throw err;
     }else{
-      console.log('La conexión a la base de datos se ha establecido ...');
-      app.listen(port,()=>{
-        console.log(`Servidor http escuchando en: ${port}`);
+      console.log('Conexión a la base de datos establecido ...');
+      app.listen(config.port,()=>{
+        console.log(`API corriendo en http://localhost:${config.port}`);
       })
     }
 });

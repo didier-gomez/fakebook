@@ -7,8 +7,16 @@
     "start": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Moises1995/fakebook.git"
+  },
   "author": "Moisés Morales Almaraz",
   "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Moises1995/fakebook/issues"
+  },
+  "homepage": "https://github.com/Moises1995/fakebook#readme",
   "dependencies": {
     "bcrypt-nodejs": "0.0.3",
     "body-parser": "^1.18.2",

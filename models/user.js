@@ -4,9 +4,9 @@ const mongoose = require('mongoose')
 const Schema = mongoose.Schema
 
 const UserSchema = Schema({
-    name: { type: String, default: 'Usuario' },
-    email: { type: String, unique: true, lowercase: true, require:true },
-    password: { type:String, require:true },
+    email: { type: String, require:true, unique: true, lowercase: true },
+    password: { type:String, require: true },
+    name: { type: String, default: 'USUARIO' },
     role: { type: String, default: 'ROLE_USER' },
     image: { type: String, default: 'null' }
 })

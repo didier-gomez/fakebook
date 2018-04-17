@@ -7,10 +7,6 @@ const jwt = require('../services/jwt')
 const fs = require('fs')
 const path = require('path')
 
-function pruebas(req,res){
-    res.status(200).send({message:'Probando controlador de usuario'})
-}
-
 function saveUser(req,res){
     let user = new User({
         name: req.body.name,
@@ -58,8 +54,7 @@ function loginUser(req,res){
 function updateUser(req,res){
     const user_id = req.params.id;
     let update = req.body;
-
-    //Ciframos la contraseña
+    //Ciframos la contraseña sincronamente
     if(update.password){
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(update.password,salt);
@@ -73,19 +68,23 @@ function updateUser(req,res){
 }
 
 function uploadImage(req,res){
-    var file_name = 'No subido'
-    if(req.files !== undefined){
-        var file_path = req.files.image.path
-        var file_name = file_path.split('\/')[2]
-        var file_ext = file_name.split('\.')[1]
-        if(file_ext=='png' || file_ext=='jpg' || file_ext=='gif'){
-            User.findByIdAndUpdate( req.params.id,{image:file_name},(err,userUpdated) => {
+    const user_id = req.params.id;
+    if(req.files){
+        const file_path = req.files.image.path;
+        const file_name = file_path.split('\/')[2];
+        const file_ext = file_name.split('\.')[1];
+        if( file_ext=='png' || file_ext=='jpg' || file_ext=='gif'){
+            User.findByIdAndUpdate(user_id,{image:file_name},(err,userUpdated)=>{
                 if(err) return res.status(500).send({message:'Error al actualizar imagen'})
-                if(!userUpdated) return res.status(404).send({message:'No se ha podido actualizar'})
-                return res.status(200).send({user:userUpdated})
+                if(!userUpdated) return res.status(404).send({message:'No se pudo actualizar la imagen'})
+                //eliminamos la imagen anterior
+                if(userUpdated.image!=='null'){
+                    fs.unlinkSync('./uploads/users/'+userUpdated.image);
+                }
+                res.status(200).send({user:userUpdated});
             })
-        } return res.status(200).send({message:'Extensión del archivo no valida'})
-    } res.status(200).send({ message: 'No se ha subido ninguna imagen' })
+        }else { res.status(200).send({message:'Extensión del archivo no valida'}) }
+    }else{ res.status(200).send({ message: 'No se ha subido ninguna imagen' }) }
 }
 
 function getImageFile(req,res){
@@ -98,7 +97,6 @@ function getImageFile(req,res){
 }
 
 module.exports = {
-  pruebas,
   saveUser,
   loginUser,
   updateUser,

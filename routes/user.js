@@ -13,7 +13,7 @@ const md_upload = multipart({ uploadDir: './uploads/users' })
 api.get('/prueba', auth , UserController.pruebas )
 api.post('/registry', UserController.saveUser )
 api.post('/login', UserController.loginUser )
-api.put('/update/:id', auth , UserController.updateUser )
+api.put('/update/:id' , UserController.updateUser )
 api.post('/upload-image/:id', md_upload , UserController.uploadImage )
 api.get('/get-image/:imageFile', UserController.getImageFile )
 

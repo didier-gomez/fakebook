@@ -1,8 +1,8 @@
 'use strict'
 
+const bcrypt = require('bcrypt-nodejs')
 const User = require('../models/user')
 const jwt = require('../services/jwt')
-const cipher = require('../services/cipher')
 //trabajando con el sistema de archivos
 const fs = require('fs')
 const path = require('path')
@@ -15,39 +15,39 @@ function saveUser(req,res){
     let user = new User({
         name: req.body.name,
         email: req.body.email,
-        password: req.body.password,
-        role: 'ROLE_USER',
-        image: 'null'
+        password: req.body.password
      })
-     if(!user.password){
-         return res.status(404).send({message:'El password es incorrecto'})
-     }
-     cipher.encodePassword(user.password)
-     .then(hash=>{
-         user.password = hash
-         user.save((err)=>{
-             if(err) return res.status(500).send({message:'Usuario ya existente'})
-             return res.status(200).send({ message: user })
+     //Correo electronico y contraseña son necesarios
+     if( user.password && user.email ){
+         //Ciframos la contraseña
+         bcrypt.genSalt(10,function(err,salt){
+             if(err){return res.status(500).send({message:'Error de generador'})}
+             bcrypt.hash(user.password,salt,null,function(err,hash){
+                 if(err){return res.status(500).send({message:'Error de cifrado'})}
+                 user.password = hash;
+                 user.save((err)=>{
+                     if(err)return res.status(200).send({message:'Usuario ya registrado'})
+                     return res.status(200).send({ message: user })
+                 })
+             })
          })
-     })
-     .catch(erro => {
-         res.status(erro.status).send({message:erro.message})
-     })
-
+     }else{
+         res.status(200).send({message:'Introduce el correo y contraseña'})
+     }
 }
 
 function loginUser(req,res){
-    User.findOne({email:req.body.email.toLowerCase()},(err,user)=>{
-        if(err) return res.status(500).send({message: `Error busqueda ${err}` })
-        if(!user) return res.status(404).send({message: 'No existe el usuario' })
-        //Comprobamos contraseña
-        user.comparePassword(req.body.password,function(err,isMatch){
-            if(isMatch){
-                if(req.body.gethash){
-                    res.status(200).send({token:jwt.createToken(user)})
-                }else{
-                    res.status(200).send({user})
-                }
+    const want_token = req.body.gethash
+    const password = req.body.password
+    const email = req.body.email
+    User.findOne({email: email.toLowerCase() },(err,user)=>{
+        if(err) return res.status(500).send({message:'Error en la busqueda'})
+        if(!user) return res.status(404).send({message:'Usuario no registrado'})
+        //Comparamos contraseña
+        bcrypt.compare(password,user.password,function(err,check){
+            if(check){
+                if(want_token){res.status(200).send({token:jwt.createToken(user)})}
+                else{res.status(200).send({user})}
             }else{
                 res.status(404).send({message:'Usuario o contraseña incorrecta'})
             }
@@ -56,17 +56,20 @@ function loginUser(req,res){
 }
 
 function updateUser(req,res){
-    User.findById(req.params.id,(err,user)=>{
-        if(err) return res.status(404).send({message:'Identificador incorrecto'})
-        if( user.body.password ) user.password = user.body.password
-        if( user.body.name     ) user.name     = user.body.name
-        if( user.body.email    ) user.email    = user.body.email
-        if( user.body.image    ) user.image    = user.body.image
-        user.save((err)=>{
-           if(err) return res.status(500).send({ message:`Error al actualizar` })
-           res.status(200).send({ message: user })
-        })
-    })
+    const user_id = req.params.id;
+    let update = req.body;
+
+    //Ciframos la contraseña
+    if(update.password){
+        const salt = bcrypt.genSaltSync(10);
+        const hash = bcrypt.hashSync(update.password,salt);
+        update.password = hash;
+    }
+    User.findByIdAndUpdate(user_id,update,(err,userUpdated)=>{
+        if(err){return res.status(500).send({message:'Error al actualizar usuario'})}
+        if(!userUpdated){return res.status(404).send({message:'No se pudo actualizar el usuario'})}
+        res.status(200).send({user:userUpdated})
+    });
 }
 
 function uploadImage(req,res){

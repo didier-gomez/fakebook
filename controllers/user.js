@@ -13,7 +13,7 @@ function saveUser(req,res){
         email: req.body.email,
         password: req.body.password
      })
-     //Correo electronico y contraseña son necesarios
+     // Correo electronico y contraseña son necesarios
      if( user.password && user.email ){
          //Ciframos la contraseña
          bcrypt.genSalt(10,function(err,salt){
@@ -21,9 +21,17 @@ function saveUser(req,res){
              bcrypt.hash(user.password,salt,null,function(err,hash){
                  if(err){return res.status(500).send({message:'Error de cifrado'})}
                  user.password = hash;
-                 user.save((err)=>{
-                     if(err)return res.status(200).send({message:'Usuario ya registrado'})
-                     return res.status(200).send({ message: user })
+                 user.save((err,userStored)=>{
+                     if(err){
+                         res.status(500).send({message:'Este usuario ya existe'});
+                     }
+                     else{
+                         if(!userStored){
+                             res.status(404).send({message:'No se pudo registrar el usuario'});
+                         }else{
+                             res.status(200).send({ user: userStored });
+                         }
+                     }
                  })
              })
          })
@@ -39,7 +47,7 @@ function loginUser(req,res){
     User.findOne({email: email.toLowerCase() },(err,user)=>{
         if(err) return res.status(500).send({message:'Error en la busqueda'})
         if(!user) return res.status(404).send({message:'Usuario no registrado'})
-        //Comparamos contraseña
+        // Comparamos contraseña
         bcrypt.compare(password,user.password,function(err,check){
             if(check){
                 if(want_token){res.status(200).send({token:jwt.createToken(user)})}
@@ -54,12 +62,16 @@ function loginUser(req,res){
 function updateUser(req,res){
     const user_id = req.params.id;
     let update = req.body;
-    //Ciframos la contraseña sincronamente
+    //El payload solo es el identificador req.user.sub
+    if( user_id != req.user ){
+        return res.status(500).send({message:'No tienes permiso!'});
+    }
+    // Ciframos la contraseña si existe
     if(update.password){
         const salt = bcrypt.genSaltSync(10);
         const hash = bcrypt.hashSync(update.password,salt);
         update.password = hash;
-    }
+    }else{ delete update.password }
     User.findByIdAndUpdate(user_id,update,(err,userUpdated)=>{
         if(err){return res.status(500).send({message:'Error al actualizar usuario'})}
         if(!userUpdated){return res.status(404).send({message:'No se pudo actualizar el usuario'})}
@@ -75,13 +87,14 @@ function uploadImage(req,res){
         const file_ext = file_name.split('\.')[1];
         if( file_ext=='png' || file_ext=='jpg' || file_ext=='gif'){
             User.findByIdAndUpdate(user_id,{image:file_name},(err,userUpdated)=>{
-                if(err) return res.status(500).send({message:'Error al actualizar imagen'})
+                if(err) return res.status(500).send({message:'Error: actualizar imagen fallo'})
                 if(!userUpdated) return res.status(404).send({message:'No se pudo actualizar la imagen'})
-                //eliminamos la imagen anterior
+                // Eliminamos la imagen anterior
                 if(userUpdated.image!=='null'){
-                    fs.unlinkSync('./uploads/users/'+userUpdated.image);
-                }
-                res.status(200).send({user:userUpdated});
+                    fs.unlink( './uploads/users/'+userUpdated.image,(err)=>{
+                        if(err)console.log("Error: no se pudo eliminar la imagen");
+                    })
+                } res.status(200).send({image:file_name,user:userUpdated});
             })
         }else { res.status(200).send({message:'Extensión del archivo no valida'}) }
     }else{ res.status(200).send({ message: 'No se ha subido ninguna imagen' }) }
